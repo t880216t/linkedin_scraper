@@ -5,7 +5,7 @@ Scrapes Linkedin User Data
 ## Installation
 
 ```bash
-pip3 install --user linkedin_scraper
+pip3 install --user git+https://github.com/t880216t/linkedin_scraper.git
 ```
 
 Version **2.0.0** and before is called `linkedin_user_scraper` and can be installed via `pip3 install --user linkedin_user_scraper`
