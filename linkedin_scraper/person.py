@@ -117,14 +117,6 @@ class Person(Scraper):
 
         # get about
         try:
-            # see_more = WebDriverWait(driver, self.__WAIT_FOR_ELEMENT_TIMEOUT).until(
-            #     EC.presence_of_element_located(
-            #         (
-            #             By.XPATH,
-            #             "//*[@class='lt-line-clamp__more']",
-            #         )
-            #     )
-            # )
             see_more = WebDriverWait(driver, self.__WAIT_FOR_ELEMENT_TIMEOUT).until(
                 EC.presence_of_element_located(
                     (
@@ -136,12 +128,6 @@ class Person(Scraper):
             driver.execute_script("arguments[0].click();", see_more)
 
             about = WebDriverWait(driver, self.__WAIT_FOR_ELEMENT_TIMEOUT).until(
-                # EC.presence_of_element_located(
-                #     (
-                #         By.XPATH,
-                #         "//*[@class='lt-line-clamp__raw-line']",
-                #     )
-                # )
                 EC.presence_of_element_located(
                     (
                         By.XPATH,
@@ -263,12 +249,6 @@ class Person(Scraper):
         try:
 
             _ = WebDriverWait(driver, self.__WAIT_FOR_ELEMENT_TIMEOUT).until(
-                # EC.presence_of_element_located(
-                #     (
-                #         By.XPATH,
-                #         "//*[@class='pv-profile-section pv-interests-section artdeco-container-card artdeco-card ember-view']",
-                #     )
-                # )
                 EC.presence_of_element_located(
                     (
                         By.XPATH,
@@ -278,7 +258,6 @@ class Person(Scraper):
 
             )
             interestContainer = driver.find_element_by_xpath(
-                # "//*[@class='pv-profile-section pv-interests-section artdeco-container-card artdeco-card ember-view']"
                 "//*[@class='pv-profile-section__section-info']"
             )
             for interestElement in interestContainer.find_elements_by_xpath(
