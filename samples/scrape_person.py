@@ -1,9 +1,32 @@
 import os
 from linkedin_scraper import Person, actions
 from selenium import webdriver
-driver = webdriver.Chrome("./chromedriver")
 
-email = os.getenv("LINKEDIN_USER")
-password = os.getenv("LINKEDIN_PASSWORD")
-actions.login(driver, email, password) # if email and password isnt given, it'll prompt in terminal
-person = Person("https://www.linkedin.com/in/andre-iguodala-65b48ab5", driver=driver)
+
+email = '18936894058'
+password = 'Lele130715'
+linkedin_url = 'https://www.linkedin.com/in/winnie-lai-17578412b/'
+
+
+option = webdriver.ChromeOptions()
+option.add_argument('--disable-infobars')  # 禁用浏览器正在被自动化程序控制的提示
+option.add_argument('--ignore-certificate-errors')
+option.add_argument('lang=en_US')  # 设置语言
+
+driver = webdriver.Chrome("./chromedriver",chrome_options=option,)
+
+actions.login(driver=driver, email=email, password=password) # if email and password isnt given, it'll prompt in terminal
+person = Person(linkedin_url, driver=driver)
+# user = {
+#         'linkedin_url': linkedin_url,
+#         'name': person.name,
+#         'about': person.about,
+#         'experiences': person.experiences,
+#         'educations': person.educations,
+#         'interests': person.interests,
+#         'accomplishments': person.accomplishments,
+#         'company': person.company,
+#         'job_title': person.job_title,
+#         'contacts': person.contacts,
+#     }
+print(person)
