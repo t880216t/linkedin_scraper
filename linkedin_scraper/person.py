@@ -71,7 +71,7 @@ class Person(Scraper):
             self.scrape_not_logged_in(close_on_complete=close_on_complete)
 
     def get_profile_data(self,html):
-        profile = None
+        persionProfile = {}
         dataList = []
         soup = BeautifulSoup(html, 'html.parser')
 
@@ -82,17 +82,37 @@ class Person(Scraper):
             dataId = codeChild.get('id')
             if data:
                 try:
-                    data = json.loads(data)
-                    if 'request' in data.keys() and "decorationId=com.linkedin.voyager.dash.deco.identity.profile" \
-                                                    ".TopCardSecondaryData" in data['request']:
+                    if 'request' in data.keys() and "com.linkedin.voyager.dash.deco.identity.profile" \
+                                                    ".FullProfileWithEntities" in data['request']:
                         sourceId = data['body']
                     dataList.append({'dataId': dataId, 'content': data})
                 except:
                     pass
         for data in dataList:
             if data['dataId'] == sourceId and 'data' in data['content'].keys():
-                profile = data['content']['included']
-        return profile
+                print(data['content'])
+                for info in data['content']['included']:
+                    if info['$type'] == 'com.linkedin.voyager.dash.identity.profile.Profile':
+                        persionProfile = {
+                            'firstName': info['firstName'],
+                            'publicIdentifier': info['publicIdentifier'],
+                            'lastName': info['lastName'],
+                            'memorialized': info['memorialized'],
+                            'summary': info['summary'],
+                            'maidenName': info['maidenName'],
+                            'profilePicture': "{}{}".format(
+                                info['profilePicture']['displayImageReference']['vectorImage'],
+                                info['profilePicture']['displayImageReference']['vectorImage']['artifacts'][1]['fileIdentifyingUrlPathSegment'].replace('&amp;', '&'),
+                            ),
+                        }
+                    elif info['$type'] == 'com.linkedin.voyager.dash.identity.profile.Position':
+                        persionProfile['PositionTitle'] = info['title']
+                        persionProfile['PositionCompanyName'] = info['companyName']
+                    elif info['$type'] == 'com.linkedin.voyager.dash.organization.Company':
+                        persionProfile['companyUrl'] = info['url']
+                        persionProfile['companyName'] = info['name']
+                        persionProfile['companyUniversalName'] = info['universalName']
+        return persionProfile
 
     def scrape_logged_in(self, close_on_complete=True):
         driver = self.driver
@@ -108,9 +128,9 @@ class Person(Scraper):
         )
         if root:
             html = driver.page_source
-            profile = self.get_profile_data(html)
+            personProfile = self.get_profile_data(html)
 
-            print(profile)
+            print(personProfile)
 
         if close_on_complete:
             driver.quit()
@@ -124,14 +144,6 @@ class Person(Scraper):
             print(page)
         if close_on_complete:
             driver.close()
-
-    @property
-    def company(self):
-        return None
-
-    @property
-    def job_title(self):
-        return None
 
     def __repr__(self):
         return "{name}\n\nAbout\n{about}\n\nExperience\n{exp}\n\nEducation\n{edu}\n\nInterest\n{int}\n\nAccomplishments\n{acc}\n\nContacts\n{conn}".format(

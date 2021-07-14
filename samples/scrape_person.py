@@ -3,8 +3,8 @@ from linkedin_scraper import Person, actions
 from selenium import webdriver
 
 
-email = '18936894058'
-password = 'Lele130715'
+email = '123123123'
+password = '12314213123'
 linkedin_url = 'https://www.linkedin.com/in/winnie-lai-17578412b/'
 
 
@@ -13,7 +13,7 @@ option.add_argument('--disable-infobars')  # 禁用浏览器正在被自动化�
 option.add_argument('--ignore-certificate-errors')
 option.add_argument('lang=en_US')  # 设置语言
 
-driver = webdriver.Chrome("./chromedriver",chrome_options=option,)
+driver = webdriver.Chrome("./chromedriver.exe",chrome_options=option,)
 
 actions.login(driver=driver, email=email, password=password) # if email and password isnt given, it'll prompt in terminal
 person = Person(linkedin_url, driver=driver)
