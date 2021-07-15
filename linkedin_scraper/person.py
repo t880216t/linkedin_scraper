@@ -40,6 +40,9 @@ class Person(Scraper):
         self.accomplishments = accomplishments or []
         self.also_viewed_urls = []
         self.contacts = contacts or []
+        self.token = None
+        self.cookies = None
+        self.session = requests.Session()
 
         if driver is None:
             try:
@@ -70,6 +73,58 @@ class Person(Scraper):
             x = input("please verify the capcha then press any key to continue...")
             self.scrape_not_logged_in(close_on_complete=close_on_complete)
 
+    # 获取cookies
+    def get_cookies(self):
+        # 获取浏览器所有Set-Cookie，返回对象是字典列表
+        cookies = self.driver.get_cookies()
+        # print(f"{cookies}")
+        cookie_dict = {}
+        for cookie in cookies:
+            if cookie['name'] == 'JSESSIONID':
+                self.token = cookie['value'].replace('"', '')
+            cookie_dict[cookie['name']] = cookie['value'].replace('"', '')
+        self.cookies = cookie_dict
+
+    def get_follow_page_data(self, publicIdentifier, start):
+        url = 'https://www.linkedin.com/voyager/api/identity/profiles/{}/following?count=20&q=followedEntities&start={}'.format(
+            publicIdentifier, start)
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/64.0.3282.186 Safari/537.36',
+            'csrf-token': self.token,
+        }
+        res = self.session.get(url=url, headers=headers, cookies=self.cookies, verify=False)
+        resp = res.json()
+        page_elements = []
+        total = resp['paging']['total']
+        for element in resp['elements']:
+            page_elements.append({
+                'name': element['entity']['com.linkedin.voyager.entities.shared.MiniCompany']['name'],
+                'universalName': element['entity']['com.linkedin.voyager.entities.shared.MiniCompany']['universalName'],
+                'objectUrn': element['entity']['com.linkedin.voyager.entities.shared.MiniCompany']['objectUrn'],
+                'followerCount': element['followingInfo']['followerCount'],
+            })
+        return total, page_elements
+
+    def get_follow_list(self, publicIdentifier):
+        followList = []
+        start = 0
+        try:
+            total, page_elements = self.get_follow_page_data(publicIdentifier, start)
+            followList = page_elements
+            if total > 20:
+                bei = round(total/20)
+                for i in range(0, bei):
+                    try:
+                        total, next_page_elements = self.get_follow_page_data(publicIdentifier, 20*i)
+                        followList += next_page_elements
+                    except Exception as e:
+                        print(e)
+                        pass
+        except Exception as e:
+            print(e)
+            pass
+        return followList
+
     def get_profile_data(self,html):
         persionProfile = {}
         dataList = []
@@ -82,15 +137,14 @@ class Person(Scraper):
             dataId = codeChild.get('id')
             if data:
                 try:
-                    if 'request' in data.keys() and "com.linkedin.voyager.dash.deco.identity.profile" \
-                                                    ".FullProfileWithEntities" in data['request']:
+                    data = json.loads(data)
+                    if 'request' in data.keys() and "com.linkedin.voyager.dash.deco.identity.profile.FullProfileWithEntities" in data['request']:
                         sourceId = data['body']
                     dataList.append({'dataId': dataId, 'content': data})
                 except:
                     pass
         for data in dataList:
             if data['dataId'] == sourceId and 'data' in data['content'].keys():
-                print(data['content'])
                 for info in data['content']['included']:
                     if info['$type'] == 'com.linkedin.voyager.dash.identity.profile.Profile':
                         persionProfile = {
@@ -101,7 +155,7 @@ class Person(Scraper):
                             'summary': info['summary'],
                             'maidenName': info['maidenName'],
                             'profilePicture': "{}{}".format(
-                                info['profilePicture']['displayImageReference']['vectorImage'],
+                                info['profilePicture']['displayImageReference']['vectorImage']['rootUrl'],
                                 info['profilePicture']['displayImageReference']['vectorImage']['artifacts'][1]['fileIdentifyingUrlPathSegment'].replace('&amp;', '&'),
                             ),
                         }
@@ -113,6 +167,31 @@ class Person(Scraper):
                         persionProfile['companyName'] = info['name']
                         persionProfile['companyUniversalName'] = info['universalName']
         return persionProfile
+
+    def get_peopleAlsoViewed(self, publicIdentifier):
+        peopleAlsoViewed = []
+        url = 'https://www.linkedin.com/voyager/api/identity/profiles/{}/browsemapWithDistance'.format(
+            publicIdentifier)
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/64.0.3282.186 Safari/537.36',
+            'csrf-token': self.token,
+        }
+        try:
+            res = self.session.get(url=url, headers=headers, cookies=self.cookies, verify=False)
+            resp = res.json()
+            for relate in resp['elements']:
+                user = relate['miniProfile']
+                peopleAlsoViewed.append({
+                    'firstName': user['firstName'],
+                    'lastName': user['lastName'],
+                    'occupation': user['occupation'],
+                    'publicIdentifier': user['publicIdentifier'],
+                    'objectUrn': user['objectUrn'],
+                })
+        except:
+            pass
+        return peopleAlsoViewed
+
 
     def scrape_logged_in(self, close_on_complete=True):
         driver = self.driver
@@ -128,7 +207,12 @@ class Person(Scraper):
         )
         if root:
             html = driver.page_source
+            self.get_cookies()
             personProfile = self.get_profile_data(html)
+            followList = self.get_follow_list(personProfile['publicIdentifier'])
+            peopleAlsoViewed = self.get_peopleAlsoViewed(personProfile['publicIdentifier'])
+            personProfile['followList'] = followList
+            personProfile['peopleAlsoViewed'] = peopleAlsoViewed
 
             print(personProfile)
 
