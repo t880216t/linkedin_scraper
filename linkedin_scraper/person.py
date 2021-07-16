@@ -32,14 +32,7 @@ class Person(Scraper):
         close_on_complete=True,
     ):
         self.linkedin_url = linkedin_url
-        self.name = name
-        self.about = about or []
-        self.experiences = experiences or []
-        self.educations = educations or []
-        self.interests = interests or []
-        self.accomplishments = accomplishments or []
-        self.also_viewed_urls = []
-        self.contacts = contacts or []
+        self.personProfile = {}
         self.token = None
         self.cookies = None
         self.session = requests.Session()
@@ -214,7 +207,7 @@ class Person(Scraper):
             personProfile['followList'] = followList
             personProfile['peopleAlsoViewed'] = peopleAlsoViewed
 
-            print(personProfile)
+            self.personProfile = personProfile
 
         if close_on_complete:
             driver.quit()

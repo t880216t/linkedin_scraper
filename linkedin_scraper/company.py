@@ -29,18 +29,8 @@ class Company(Scraper):
                  industry=None, company_type=None, company_size=None, specialties=None, showcase_pages=[],
                  affiliated_companies=[], driver=None, scrape=True, get_employees=True, close_on_complete=True):
         self.linkedin_url = linkedin_url
-        self.name = name
-        self.about_us = about_us
-        self.website = website
-        self.headquarters = headquarters
-        self.founded = founded
-        self.industry = industry
-        self.company_type = company_type
-        self.company_size = company_size
-        self.specialties = specialties
-        self.showcase_pages = showcase_pages
-        self.affiliated_companies = affiliated_companies
         self.token = None
+        self.companyInfo = {}
         self.cookies = None
         self.session = requests.Session()
 
@@ -79,6 +69,126 @@ class Company(Scraper):
         else:
             self.scrape_not_logged_in(get_employees=get_employees, close_on_complete=close_on_complete)
 
+    def get_company_data(self, html):
+        companyInfo = {}
+        relateUser = []
+        peopleAlsoView = []
+        companyTopic = []
+        dataList = []
+        soup = BeautifulSoup(html, 'html.parser')
+
+        dataAll = soup.find_all('code')
+        for codeChild in dataAll:
+            data = codeChild.text
+            dataId = codeChild.get('id')
+            try:
+                data = json.loads(data)
+                dataList.append({'dataId': dataId, 'content': data})
+            except:
+                pass
+        for _data in dataList:
+            # 获取公司基本信息
+            if 'request' in _data['content'].keys() and "com.linkedin.voyager.deco.organization.web.WebFullCompanyMain" in \
+                    _data['content']['request']:
+                for data in dataList:
+                    if data['dataId'] == _data['content']['body'] and 'data' in data['content'].keys():
+                        for info in data['content']['included']:
+                            try:
+                                if info['$type'] == 'com.linkedin.voyager.organization.Company':
+                                    companyInfo = {
+                                        'name': info['name'],
+                                        'url': info['url'],
+                                        'relateUser': [],
+                                        'peopleAlsoView': [],
+                                        'companyTopic': [],
+                                        'universalName': info['universalName'],
+                                        'companyPageUrl': info['companyPageUrl'],
+                                        'tagline': info['tagline'],
+                                        'headquarter': info['headquarter'],
+                                        'logo': "{}{}".format(
+                                            info['logo']['image']['rootUrl'],
+                                            info['logo']['image']['artifacts'][1]['fileIdentifyingUrlPathSegment'],
+                                        ),
+                                        'specialities': info['specialities'],
+                                        'confirmedLocations': info['confirmedLocations'],
+                                        'description': info['description'],
+                                        'foundedOn': info['foundedOn']['year'],
+                                        'companyType': info['companyType']['code'],
+                                        'staffCountRange': {
+                                            'start': info['staffCountRange']['start'],
+                                            'end': info['staffCountRange']['end'],
+                                        },
+                                    }
+                            except Exception as e:
+                                print(e)
+                                pass
+            # 跟踪信息
+            elif 'request' in _data['content'].keys() and 'com.linkedin.voyager.deco.organization.web.highlights.WebHighlightItem' in \
+                    _data['content']['request']:
+                for data in dataList:
+                    if data['dataId'] == _data['content']['body'] and 'data' in data['content'].keys():
+                        for info in data['content']['included']:
+                            try:
+                                # relate user
+                                if info['$type'] == 'com.linkedin.voyager.identity.normalizedprofile.Profile':
+                                    relateUser.append({
+                                        'lastName': info['lastName'],
+                                        'firstName': info['firstName'],
+                                        'profilePicture': "{}{}".format(
+                                            info['profilePicture']['rootUrl'],
+                                            info['profilePicture']['artifacts'][1]['fileIdentifyingUrlPathSegment'].replace('&amp;', '&'),
+                                        ),
+                                        'mostRecentPosition': info['mostRecentPosition'],
+                                        'companyName': info['mostRecentPosition']['companyName'],
+                                        'title': info['mostRecentPosition']['title'],
+                                        'startedOn': {
+                                            'year': info['mostRecentPosition']['startedOn']['year'],
+                                            'month': info['mostRecentPosition']['startedOn']['month'],
+                                        },
+                                    })
+                                # company feed topic
+                                elif info['$type'] == 'com.linkedin.voyager.feed.FeedTopic':
+                                    companyTopic.append({
+                                        'name': info['topic']['name'],
+                                        'trending': info['topic']['trending'],
+                                        'covid19': info['covid19'],
+                                    })
+                            except Exception as e:
+                                print(e)
+                                pass
+            # 推荐信息
+            elif 'request' in _data['content'].keys() and 'com.linkedin.voyager.deco.organization.web.WebSimilarCompanyCardWithRelevanceReason' in \
+                    _data['content']['request']:
+                for data in dataList:
+                    if data['dataId'] == _data['content']['body'] and 'data' in data['content'].keys():
+                        for info in data['content']['included']:
+                            try:
+                                # relate company
+                                if info['$type'] == 'com.linkedin.voyager.organization.Company':
+                                    peopleAlsoView.append({
+                                        'name': info['name'],
+                                        'url': info['url'],
+                                        'logo': "{}{}".format(
+                                            info['logo']['image']['rootUrl'],
+                                            info['logo']['image']['artifacts'][1]['fileIdentifyingUrlPathSegment'],
+                                        ),
+                                        'universalName': info['universalName'],
+                                        'staffCountRange': {
+                                            'start': info['staffCountRange']['start'],
+                                            'end': info['staffCountRange']['end'],
+                                        },
+                                    })
+                            except Exception as e:
+                                print(e)
+                                pass
+
+        companyInfo['relateUser'] = relateUser
+        companyInfo['peopleAlsoView'] = peopleAlsoView
+        companyInfo['companyTopic'] = companyTopic
+
+        return companyInfo
+
+
     def scrape_logged_in(self, get_employees=True, close_on_complete=True):
         driver = self.driver
 
@@ -86,13 +196,11 @@ class Company(Scraper):
 
         _ = WebDriverWait(driver, 3).until(EC.presence_of_all_elements_located((By.XPATH, '//span[@dir="ltr"]')))
 
-        navigation = driver.find_element_by_class_name("org-page-navigation__items ")
-
         driver.get(self.linkedin_url)
         html = driver.page_source
         self.get_cookies()
-        print(self.token)
-        print(self.cookies)
+        if html:
+            self.companyInfo = self.get_company_data(html)
 
         if close_on_complete:
             driver.close()
