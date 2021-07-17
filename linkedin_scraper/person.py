@@ -17,15 +17,6 @@ class Person(Scraper):
     def __init__(
         self,
         linkedin_url=None,
-        name=None,
-        about=None,
-        experiences=None,
-        educations=None,
-        interests=None,
-        accomplishments=None,
-        company=None,
-        job_title=None,
-        contacts=None,
         driver=None,
         get=True,
         scrape=True,
@@ -90,12 +81,24 @@ class Person(Scraper):
         page_elements = []
         total = resp['paging']['total']
         for element in resp['elements']:
-            page_elements.append({
-                'name': element['entity']['com.linkedin.voyager.entities.shared.MiniCompany']['name'],
-                'universalName': element['entity']['com.linkedin.voyager.entities.shared.MiniCompany']['universalName'],
-                'objectUrn': element['entity']['com.linkedin.voyager.entities.shared.MiniCompany']['objectUrn'],
-                'followerCount': element['followingInfo']['followerCount'],
-            })
+            print(element)
+            if 'com.linkedin.voyager.identity.shared.MiniProfile' in element['entity'].keys():
+                page_elements.append({
+                    'firstName': element['entity']['com.linkedin.voyager.identity.shared.MiniProfile']['firstName'],
+                    'lastName': element['entity']['com.linkedin.voyager.identity.shared.MiniProfile']['lastName'],
+                    'occupation': element['entity']['com.linkedin.voyager.identity.shared.MiniProfile']['occupation'],
+                    'objectUrn': element['entity']['com.linkedin.voyager.identity.shared.MiniProfile']['objectUrn'],
+                    'publicIdentifier': element['entity']['com.linkedin.voyager.identity.shared.MiniProfile']['publicIdentifier'],
+                    'followerCount': element['followingInfo']['followerCount'],
+                })
+
+            elif 'com.linkedin.voyager.entities.shared.MiniCompany' in element['entity'].keys():
+                page_elements.append({
+                    'name': element['entity']['com.linkedin.voyager.entities.shared.MiniCompany']['name'],
+                    'universalName': element['entity']['com.linkedin.voyager.entities.shared.MiniCompany']['universalName'],
+                    'objectUrn': element['entity']['com.linkedin.voyager.entities.shared.MiniCompany']['objectUrn'],
+                    'followerCount': element['followingInfo']['followerCount'],
+                })
         return total, page_elements
 
     def get_follow_list(self, publicIdentifier):
@@ -158,7 +161,7 @@ class Person(Scraper):
                     elif info['$type'] == 'com.linkedin.voyager.dash.organization.Company':
                         persionProfile['companyUrl'] = info['url']
                         persionProfile['companyName'] = info['name']
-                        persionProfile['companyUniversalName'] = info['universalName']
+                        persionProfile['companyUniversalName'] = info['universalName'] if 'universalName' in info.keys() else ''
         return persionProfile
 
     def get_peopleAlsoViewed(self, publicIdentifier):
@@ -221,14 +224,3 @@ class Person(Scraper):
             print(page)
         if close_on_complete:
             driver.close()
-
-    def __repr__(self):
-        return "{name}\n\nAbout\n{about}\n\nExperience\n{exp}\n\nEducation\n{edu}\n\nInterest\n{int}\n\nAccomplishments\n{acc}\n\nContacts\n{conn}".format(
-            name=self.name,
-            about=self.about,
-            exp=self.experiences,
-            edu=self.educations,
-            int=self.interests,
-            acc=self.accomplishments,
-            conn=self.contacts,
-        )

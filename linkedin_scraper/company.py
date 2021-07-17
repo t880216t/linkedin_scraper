@@ -12,18 +12,6 @@ import json
 
 
 class Company(Scraper):
-    linkedin_url = None
-    name = None
-    about_us = None
-    website = None
-    headquarters = None
-    founded = None
-    industry = None
-    company_type = None
-    company_size = None
-    specialties = None
-    showcase_pages = []
-    affiliated_companies = []
 
     def __init__(self, linkedin_url=None, driver=None, scrape=True, close_on_complete=True):
         self.linkedin_url = linkedin_url
